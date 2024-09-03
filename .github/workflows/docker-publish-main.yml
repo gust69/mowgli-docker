@@ -42,6 +42,13 @@ jobs:
       id-token: write
 
     steps:
+
+      - name: Lowercase registry image
+        run: |
+          echo "REGISTRY_IMAGE_LC=${REGISTRY_IMAGE,,}" >>${GITHUB_ENV}
+        env:
+          REPOSITORY: '${{ env.REGISTRY_IMAGE }}'
+
       # Login against a Docker registry except on PR
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
@@ -72,7 +79,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY_IMAGE }}
+          images: ${{ env.REGISTRY_IMAGE_LC }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -85,7 +92,7 @@ jobs:
         with:
           platforms: ${{ matrix.arch }}
           context: docker/openmower
-          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE_LC }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Export digest
@@ -105,6 +112,11 @@ jobs:
     needs:
       - build
     steps:
+      - name: Lowercase registry image
+        run: |
+          echo "REGISTRY_IMAGE_LC=${REGISTRY_IMAGE,,}" >>${GITHUB_ENV}
+        env:
+          REPOSITORY: '${{ env.REGISTRY_IMAGE }}'
       - name: Download digests
         uses: actions/download-artifact@v3
         with:
@@ -116,7 +128,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY_IMAGE }}
+          images: ${{ env.REGISTRY_IMAGE_LC }}
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
@@ -126,10 +138,10 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create -t ${{ env.REGISTRY_IMAGE }}:cedbossneo \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
-          docker buildx imagetools create -t ${{ env.REGISTRY_IMAGE }}:main \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+          docker buildx imagetools create -t ${{ env.REGISTRY_IMAGE_LC }}:cedbossneo \
+            $(printf '${{ env.REGISTRY_IMAGE_LC }}@sha256:%s ' *)
+          docker buildx imagetools create -t ${{ env.REGISTRY_IMAGE_LC }}:main \
+            $(printf '${{ env.REGISTRY_IMAGE_LC }}@sha256:%s ' *)
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:main
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE_LC }}:main
